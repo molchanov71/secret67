@@ -1,0 +1,40 @@
+.nav-toggle {
+    display: none;
+}
+
+.nav-links {
+    display: flex;
+    gap: .5rem;
+}
+
+.nav-links ::deep .nav-link {
+    color: rgba(255, 255, 255, .7);
+}
+
+.nav-links ::deep .nav-link:hover,
+.nav-links ::deep .nav-link:active {
+    color: #fff;
+}
+
+@media (max-width: 767px) {
+    .navbar {
+        flex-wrap: wrap;
+    }
+
+    .nav-links {
+        display: none;
+        flex-direction: column;
+        width: 100%;
+        padding-top: .5rem;
+    }
+
+    .nav-toggle:checked ~ .nav-links {
+        display: flex;
+    }
+}
+
+@media (min-width: 768px) {
+    .navbar-toggler {
+        display: none;
+    }
+}

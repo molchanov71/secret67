@@ -1,0 +1,19 @@
+services:
+    db:
+        image: postgres:17
+        container_name: secret67-db
+        restart: unless-stopped
+        environment:
+            POSTGRES_USER: admin
+            POSTGRES_PASSWORD: 67135667
+            POSTGRES_DB: secret67
+        ports:
+            - "5432:5432"
+        volumes:
+            - pgdata:/var/lib/postgresql/data
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U secret67"]
+            interval: 5s
+            retries: 5
+volumes:
+    pgdata:

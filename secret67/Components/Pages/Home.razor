@@ -1,0 +1,18 @@
+﻿@page "/"
+@rendermode InteractiveServer
+
+<PageTitle>Home</PageTitle>
+
+<h1>Hello, world!</h1>
+
+<button @onclick="IncrementCount">Click</button>
+
+<p>Count: @_count</p>
+
+@code {
+
+    int _count;
+
+    void IncrementCount() => _count++;
+
+}
