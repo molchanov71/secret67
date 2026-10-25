@@ -12,7 +12,7 @@
 }
 
 .nav-links ::deep .nav-link:hover,
-.nav-links ::deep .nav-link:active {
+.nav-links ::deep .nav-link.active {
     color: #fff;
 }
 

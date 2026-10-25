@@ -1,0 +1,89 @@
+@page "/Register"
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject IPasswordHasher<User> Hasher
+@inject NavigationManager Nav
+<PageTitle>Регистрация</PageTitle>
+
+<h1>Регистрация</h1>
+
+<EditForm Model="Input" method="post" OnValidSubmit="RegisterAsync" FormName="register" style="max-width: 320px">
+    <DataAnnotationsValidator/>
+    <InputText @bind-Value="Input.Username" class="form-control mb-2" placeholder="Логин"/>
+    <InputText @bind-Value="Input.Password" type="password" class="form-control mb-2" placeholder="Пароль"/>
+    <InputText @bind-value="Input.PasswordAgain" type="password" class="form-control mb-2" placeholder="Повторите пароль"/>
+    <ValidationSummary/>
+    @if (error is not null)
+    {
+        <div class="text-danger mb-2">@error</div>
+    }
+    <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
+</EditForm>
+
+@code {
+    [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
+    [SupplyParameterFromForm] private RegisterModel Input { get; set; } = default!;
+    [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
+
+    protected override void OnInitialized() => Input ??= new();
+    
+    private string? error;
+
+    private async Task RegisterAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        
+        var newUser = new User { Username = Input.Username.Trim(), PasswordHash = "" };
+        newUser.PasswordHash = Hasher.HashPassword(newUser, Input.Password);
+        db.Users.Add(newUser);
+
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation })
+        {
+            error = "Имя пользователя занято";
+            ClearPasswords();
+            return;
+        }
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, newUser.Id.ToString()),
+            new(ClaimTypes.Name, newUser.Username)
+        };
+
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        await HttpContext.SignInAsync(new ClaimsPrincipal(identity));
+
+        var target = ReturnUrl is { } url && url.StartsWith('/') && !url.StartsWith("//") && !url.StartsWith("/\\") ? url : "/";
+        Nav.NavigateTo(target);
+    }
+
+    private void ClearPasswords()
+    {
+        Input.Password = "";
+        Input.PasswordAgain = "";
+    }
+
+    private sealed class RegisterModel
+    {
+        [Required(ErrorMessage = "Введите логин")]
+        [MaxLength(32, ErrorMessage = "Логин не длиннее 32 символов")]
+        public string Username { get; set; } = "";
+
+        [Required(ErrorMessage = "Введите пароль")]
+        [MinLength(8, ErrorMessage = "Пароль должен быть не короче 8 символов")]
+        public string Password { get; set; } = "";
+        
+        [Required(ErrorMessage = "Введите пароль ещё раз")]
+        [Compare(nameof(Password), ErrorMessage = "Пароли не совпадают")]
+        public string PasswordAgain { get; set; } = "";
+    }
+}
