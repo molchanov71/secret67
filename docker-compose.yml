@@ -5,10 +5,10 @@ services:
         restart: unless-stopped
         environment:
             POSTGRES_USER: admin
-            POSTGRES_PASSWORD: 67135667
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD в .env}
             POSTGRES_DB: secret67
         ports:
-            - "5432:5432"
+            - "127.0.0.1:5432:5432"
         volumes:
             - pgdata:/var/lib/postgresql/data
         healthcheck:
@@ -17,3 +17,9 @@ services:
             retries: 5
 volumes:
     pgdata:
+
+networks:
+    default:
+        ipam:
+            config:
+                - subnet: 172.30.0.0/24

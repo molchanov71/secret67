@@ -1,0 +1,106 @@
+@page "/user"
+@page "/user/{Id:int}"
+@using System.Security.Claims
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager Nav
+
+<PageTitle>@username</PageTitle>
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <h3 class="mb-0">@username</h3>
+    <div class="d-flex flex-column gap-2">
+        @if (isOwnPage)
+        {
+            @if (isOwnPage)
+        {
+            <a href="/newpost" class="btn btn-primary">Написать пост</a>
+        }
+        }
+        @if (posts is not null)
+        {
+            <span class="badge text-bg-secondary">Постов: @posts.Count</span>
+        }
+    </div>
+</div>
+
+@if (notFound)
+{
+    <div class="alert alert-warning text-center" role="alert">
+        Пользователь не найден
+    </div>
+}
+else if (posts is null)
+{
+    <div class="d-flex justify-content-center my-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Загрузка...</span>
+        </div>
+    </div>
+}
+else if (posts.Count == 0)
+{
+    <div class="alert alert-light border text-center" role="alert">
+        @(isOwnPage ? "У вас пока нет постов" : "У пользователя пока нет постов")
+    </div>
+}
+else
+{
+    <div class="d-flex flex-column gap-3">
+        @foreach (var post in posts)
+        {
+            <div class="card shadow-sm" @key="post.Id">
+                <div class="card-body">
+                    <p class="card-text" style="white-space: pre-line">@post.Text</p>
+                </div>
+                <div class="card-footer bg-transparent text-body-secondary small">
+                    <LocalTime Value="post.CreatedAt"/>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = null!;
+    [Parameter] public int? Id { get; set; }
+
+    private string? username;
+    private List<Post>? posts;
+    private bool isOwnPage;
+    private bool notFound;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var user = (await AuthState).User;
+        int? currentUserId = int.TryParse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : null;
+        
+        if (Id is null && currentUserId is null)
+        {
+            Nav.NavigateTo($"/login?ReturnUrl={Uri.EscapeDataString("/user")}");
+            return;
+        }
+
+        var userId = Id ?? currentUserId!.Value;
+        isOwnPage = userId == currentUserId;
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        username = await db.Users
+            .Where(u => u.Id == userId)
+            .Select(u => u.Username)
+            .FirstOrDefaultAsync();
+
+        notFound = username is null;
+        if (notFound)
+        {
+            posts = null;
+            return;
+        }
+
+        posts = await db.Posts
+            .AsNoTracking()
+            .Where(p => p.UserId == userId)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync();
+    }
+}

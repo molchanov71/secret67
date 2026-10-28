@@ -4,7 +4,7 @@
 
 .nav-links {
     display: flex;
-    gap: .5rem;
+    gap: 1rem;
 }
 
 .nav-links ::deep .nav-link {

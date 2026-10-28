@@ -10,8 +10,12 @@
     <link rel="stylesheet" href="@Assets["app.css"]"/>
     <link rel="stylesheet" href="@Assets["secret67.styles.css"]"/>
     <ImportMap/>
-    <link rel="icon" type="image/png" href="favicon.png"/>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
     <HeadOutlet/>
+    <script>
+    document.cookie = "tz=" + encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)
+        + ";path=/;max-age=31536000;samesite=lax";
+</script>
 </head>
 
 <body>

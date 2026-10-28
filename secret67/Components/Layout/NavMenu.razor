@@ -1,3 +1,5 @@
+@inject NavigationManager Nav
+
 <nav class="navbar navbar-expand-md bg-dark px-3" data-bs-theme="dark">
     <a class="navbar-brand" href="">67</a>
     
@@ -12,7 +14,11 @@
     <div class="nav-links ms-md-auto">
         <AuthorizeView>
             <Authorized>
-                <form method="post" action="logout">
+                @if (!IsOnOwnPage)
+                {
+                    <NavLink class="nav-link" href="/user">Посты</NavLink>
+                }
+                <form method="post" action="/logout">
                     <AntiforgeryToken/>
                     <button type="submit" class="btn btn-link nav-link">Выйти (@context.User.Identity?.Name)</button>
                 </form>
@@ -26,5 +32,8 @@
 </nav>
 
 @code {
-    
+    private bool IsOnOwnPage =>
+        Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0].TrimEnd('/')
+            .Equals("user", StringComparison.OrdinalIgnoreCase);
+
 }

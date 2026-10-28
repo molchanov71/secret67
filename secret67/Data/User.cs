@@ -15,4 +15,8 @@ public class User
     public required string PasswordHash { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public List<Post> Posts { get; set; } = [];
+
+    public static string NormalizeUsername(string username) => username.Trim().ToLowerInvariant();
 }

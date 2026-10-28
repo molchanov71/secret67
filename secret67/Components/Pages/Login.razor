@@ -12,7 +12,7 @@
 
 <h1>Вход</h1>
 
-<EditForm Model="Input" method="post" OnValidSubmit="LoginAsync" FormName="login" style="max-width: 320px">
+<EditForm Model="Input" method="post" OnValidSubmit="LoginAsync" OnInvalidSubmit="ClearPassword" FormName="login" style="max-width: 320px">
     <DataAnnotationsValidator/>
     <InputText @bind-Value="Input.Username" class="form-control mb-2" placeholder="Логин"/>
     <InputText @bind-Value="Input.Password" type="password" class="form-control mb-2" placeholder="Пароль"/>
@@ -33,17 +33,29 @@
     
     private string? error;
 
+    // Хеш-заглушка: проверяем пароль и для несуществующего логина, чтобы время ответа не выдавало, есть ли такой пользователь
+    private static string? dummyHash;
+
     private async Task LoginAsync()
     {
         await using var db = await DbFactory.CreateDbContextAsync();
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Username.Trim() == Input.Username.Trim());
+        var username = User.NormalizeUsername(Input.Username);
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Username == username);
 
-        if (user is null ||
-            Hasher.VerifyHashedPassword(user, user.PasswordHash, Input.Password) == PasswordVerificationResult.Failed)
+        dummyHash ??= Hasher.HashPassword(null!, Guid.NewGuid().ToString());
+        var result = Hasher.VerifyHashedPassword(user!, user?.PasswordHash ?? dummyHash, Input.Password);
+
+        if (user is null || result == PasswordVerificationResult.Failed)
         {
             error = "Неверный логин или пароль";
-            Input.Password = "";
+            ClearPassword();
             return;
+        }
+
+        if (result == PasswordVerificationResult.SuccessRehashNeeded)
+        {
+            user.PasswordHash = Hasher.HashPassword(user, Input.Password);
+            await db.SaveChangesAsync();
         }
 
         var claims = new List<Claim>
@@ -55,9 +67,10 @@
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
         await HttpContext.SignInAsync(new ClaimsPrincipal(identity));
 
-        var target = ReturnUrl is { } url && url.StartsWith('/') && !url.StartsWith("//") && !url.StartsWith("/\\") ? url : "/";
-        Nav.NavigateTo(target);
+        Nav.NavigateTo(LocalUrl.OrRoot(ReturnUrl));
     }
+
+    private void ClearPassword() => Input.Password = "";
 
     private sealed class LoginModel
     {

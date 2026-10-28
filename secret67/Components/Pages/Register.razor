@@ -12,11 +12,11 @@
 
 <h1>Регистрация</h1>
 
-<EditForm Model="Input" method="post" OnValidSubmit="RegisterAsync" FormName="register" style="max-width: 320px">
+<EditForm Model="Input" method="post" OnValidSubmit="RegisterAsync" OnInvalidSubmit="ClearPasswords" FormName="register" style="max-width: 320px">
     <DataAnnotationsValidator/>
     <InputText @bind-Value="Input.Username" class="form-control mb-2" placeholder="Логин"/>
     <InputText @bind-Value="Input.Password" type="password" class="form-control mb-2" placeholder="Пароль"/>
-    <InputText @bind-value="Input.PasswordAgain" type="password" class="form-control mb-2" placeholder="Повторите пароль"/>
+    <InputText @bind-Value="Input.PasswordAgain" type="password" class="form-control mb-2" placeholder="Повторите пароль"/>
     <ValidationSummary/>
     @if (error is not null)
     {
@@ -38,7 +38,7 @@
     {
         await using var db = await DbFactory.CreateDbContextAsync();
         
-        var newUser = new User { Username = Input.Username.Trim(), PasswordHash = "" };
+        var newUser = new User { Username = User.NormalizeUsername(Input.Username), PasswordHash = "" };
         newUser.PasswordHash = Hasher.HashPassword(newUser, Input.Password);
         db.Users.Add(newUser);
 
@@ -62,8 +62,7 @@
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
         await HttpContext.SignInAsync(new ClaimsPrincipal(identity));
 
-        var target = ReturnUrl is { } url && url.StartsWith('/') && !url.StartsWith("//") && !url.StartsWith("/\\") ? url : "/";
-        Nav.NavigateTo(target);
+        Nav.NavigateTo(LocalUrl.OrRoot(ReturnUrl));
     }
 
     private void ClearPasswords()
@@ -76,6 +75,7 @@
     {
         [Required(ErrorMessage = "Введите логин")]
         [MaxLength(32, ErrorMessage = "Логин не длиннее 32 символов")]
+        [RegularExpression(@"^\s*[A-Za-z0-9_.-]+\s*$", ErrorMessage = "Логин может содержать только латинские буквы, цифры и символы _ . -")]
         public string Username { get; set; } = "";
 
         [Required(ErrorMessage = "Введите пароль")]
